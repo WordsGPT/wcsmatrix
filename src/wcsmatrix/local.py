@@ -263,7 +263,7 @@ def token_audit(model, tokenizer, prompt, text, spec, scoring):
     )
 
 
-def audit(config, name=None, limit=None):
+def audit(config, name=None, limit=None, sources=None):
     import torch
 
     prompts = {r["id"]: r for r in evaluation_prompts(config)}
@@ -272,6 +272,9 @@ def audit(config, name=None, limit=None):
     if {r["prompt_id"] for r in texts} - known_ids:
         raise ValueError("Source texts contain prompts outside the frozen manifest")
     texts = [r for r in texts if r["prompt_id"] in prompts]
+    if sources:
+        allowed_sources = {sources} if isinstance(sources, str) else set(sources)
+        texts = [r for r in texts if r["source"] in allowed_sources]
     if not texts:
         raise ValueError("No source texts; run prepare/generate/frontier first")
     if limit is not None:
@@ -389,8 +392,28 @@ def rescore(config):
                         **value,
                     }
                 )
-    write_jsonl(Path("results/scores") / (config["name"] + ".jsonl"), rows)
-    print(f"Wrote {len(rows)} per-prompt scores")
+    score_path = Path("results/scores") / (config["name"] + ".jsonl")
+    allowed_modes = set(config["scoring"]["modes"])
+    allowed_ps = {float(x) for x in config["scoring"]["top_p"]}
+    allowed_policy = config["scoring"]["word_policy"]
+    existing = {
+        (r["prompt_id"], r["source"], r["scorer"], r["mode"], float(r["p"])): r
+        for r in read_jsonl(score_path)
+        if (r["prompt_id"], r["source"]) in texts
+        and r["scorer"] in specs
+        and r["prompt_id"] in prompts
+        and r.get("mode") in allowed_modes
+        and float(r.get("p", -1)) in allowed_ps
+        and r.get("word_policy") == allowed_policy
+    }
+    for r in rows:
+        existing[(r["prompt_id"], r["source"], r["scorer"], r["mode"], float(r["p"]))] = r
+    merged = sorted(
+        existing.values(),
+        key=lambda r: (r["scorer"], r["source"], r["prompt_id"], r["mode"], r["p"]),
+    )
+    write_jsonl(score_path, merged)
+    print(f"Wrote {len(merged)} per-prompt scores")
 
 
 def preflight(config):

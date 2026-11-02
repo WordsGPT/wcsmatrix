@@ -20,6 +20,7 @@ def main():
     p.add_argument("--limit", type=int)
     p = sub.add_parser("audit", help="Teacher-force all source texts with one scorer at a time")
     p.add_argument("--model")
+    p.add_argument("--source", action="append", help="Restrict audit to specific source name(s)")
     p.add_argument("--limit", type=int)
     sub.add_parser("rescore", help="Recompute WCS from compressed token audits, without GPU")
     p = sub.add_parser("analyze", help="Paired bootstrap, heatmaps, paper comparisons")
@@ -42,7 +43,7 @@ def main():
     elif args.command == "audit":
         from .local import audit
 
-        audit(config, args.model, args.limit)
+        audit(config, args.model, args.limit, args.source)
     elif args.command == "rescore":
         from .local import rescore
 

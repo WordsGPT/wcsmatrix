@@ -1,0 +1,9 @@
+{
+  "config_sha256": "14b0f30309dd870e41edc9bb973256984e326678e277d0f9f1b954c99c3457dc",
+  "score_rows": 56700,
+  "partial": false,
+  "evaluation_exclusions": {},
+  "bootstrap_replicates": 10000,
+  "seed": 42,
+  "intervals": "pointwise paired percentile bootstrap; no multiplicity correction"
+}

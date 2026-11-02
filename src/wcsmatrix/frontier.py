@@ -8,7 +8,7 @@ from pathlib import Path
 import httpx
 from dotenv import load_dotenv
 
-from .io import append_jsonl, digest, now, read_jsonl, unique_rows, write_json
+from .io import append_jsonl, digest, now, read_jsonl, unique_rows, write_json, write_jsonl
 
 CATALOG = "https://openrouter.ai/api/v1/models"
 ENDPOINT = "https://openrouter.ai/api/v1/chat/completions"
@@ -66,7 +66,8 @@ def collect(config, env_file=None, limit=None, workers=3, max_cost=20.0):
                     raise ValueError(
                         "Existing frontier output has different settings; choose a new output path"
                     )
-                continue
+                if old.get("complete", True):
+                    continue
             price = info["pricing"]
             # UTF-8 bytes upper-bound ordinary prompt token count, plus chat overhead.
             bound += (len(prompt["prompt"].encode()) + 128) * float(price["prompt"]) + config[
@@ -147,7 +148,13 @@ def collect(config, env_file=None, limit=None, workers=3, max_cost=20.0):
             model, prompt, _, _ = futures[future]
             try:
                 row = future.result()
-                append_jsonl(target, row)
+                key_pair = (row["prompt_id"], row["source"])
+                if key_pair in done:
+                    done[key_pair] = row
+                    write_jsonl(target, list(done.values()))
+                else:
+                    done[key_pair] = row
+                    append_jsonl(target, row)
                 print(
                     f"{model['name']} {prompt['id']}: {row['words']} words, {row['finish_reason']}",
                     flush=True,

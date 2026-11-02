@@ -1,0 +1,13 @@
+tier,lexical_category,lost_words,total_words,loss_rate,share_of_tier_losses
+human,content_lexical,12809,61545,0.208124,0.748583
+human,function_stopword,4067,48136,0.08449,0.237683
+human,standalone_punct_or_symbol,235,770,0.305195,0.013734
+frontier_proprietary,content_lexical,48836,328273,0.148766,0.765215
+frontier_proprietary,function_stopword,14686,206899,0.070981,0.230116
+frontier_proprietary,standalone_punct_or_symbol,298,3762,0.079213,0.004669
+large_open_weight,content_lexical,87455,705969,0.123879,0.728306
+large_open_weight,function_stopword,27337,451110,0.060599,0.227657
+large_open_weight,standalone_punct_or_symbol,5288,17611,0.300267,0.044037
+small_open_weight,content_lexical,60630,899200,0.067427,0.703389
+small_open_weight,function_stopword,25252,730630,0.034562,0.292957
+small_open_weight,standalone_punct_or_symbol,315,3160,0.099684,0.003654

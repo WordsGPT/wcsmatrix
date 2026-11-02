@@ -1,0 +1,324 @@
+name: hc3-50-comparison-open-frontier-detok-20261101
+prompts: data/prompts/hc3-50.jsonl
+human_texts: data/texts/human-detok.jsonl
+local_texts: data/texts/local.jsonl
+frontier_texts: data/texts/frontier.jsonl
+dataset:
+  n: 50
+  seed: 42
+  min_words: 150
+  max_words: 400
+  revision: 4d0ff18143b5a7e1b1e79beb540c04549d1e59d3
+prompt_template: "Answer the following question in English, using 150\u2013400 words.\
+  \ Give only your answer.\n\n{question}"
+models:
+- name: qwen-2b
+  family: qwen
+  id: Qwen/Qwen3.5-2B
+  revision: 15852e8c16360a2fea060d615a32b45270f8a8fc
+  precision: bf16
+  estimated_parameters_b: 2
+  stage: instruct
+  version: '3.5'
+  loader: multimodal
+  chat_kwargs:
+    enable_thinking: false
+- name: qwen-4b
+  family: qwen
+  id: Qwen/Qwen3.5-4B
+  revision: 851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a
+  precision: bf16
+  estimated_parameters_b: 4
+  stage: instruct
+  version: '3.5'
+  loader: multimodal
+  chat_kwargs:
+    enable_thinking: false
+- name: qwen-9b
+  family: qwen
+  id: Qwen/Qwen3.5-9B
+  revision: c202236235762e1c871ad0ccb60c8ee5ba337b9a
+  precision: bf16
+  estimated_parameters_b: 9
+  stage: instruct
+  version: '3.5'
+  loader: multimodal
+  chat_kwargs:
+    enable_thinking: false
+- name: qwen-27b-int8
+  family: qwen
+  id: Qwen/Qwen3.5-27B
+  revision: fc05daec18b0a78c049392ed2e771dde82bdf654
+  precision: int8
+  estimated_parameters_b: 27
+  stage: instruct
+  version: '3.5'
+  loader: multimodal
+  chat_kwargs:
+    enable_thinking: false
+- name: gemma-e2b
+  family: gemma
+  id: google/gemma-4-E2B-it
+  revision: 3e22461f65e89153144f8adb70e3b8c2cc9845a7
+  precision: bf16
+  estimated_parameters_b: 5.1
+  stage: instruct
+  version: '4'
+  loader: multimodal
+  chat_kwargs: {}
+- name: gemma-e4b
+  family: gemma
+  id: google/gemma-4-E4B-it
+  revision: ee0ef6023621cff504d758262d4e04895a5af4a2
+  precision: bf16
+  estimated_parameters_b: 8
+  stage: instruct
+  version: '4'
+  loader: multimodal
+  chat_kwargs: {}
+- name: gemma-12b
+  family: gemma
+  id: google/gemma-4-12B-it
+  revision: 707f0a3b8a3c7ad586ed01e27eafbad8a27dd0f7
+  precision: bf16
+  estimated_parameters_b: 12
+  stage: instruct
+  version: '4'
+  loader: multimodal
+  chat_kwargs: {}
+frontier_models:
+- name: gpt-6-astra
+  family: openai
+  id: openai/gpt-6-astra
+  parameters:
+    reasoning:
+      effort: low
+      exclude: true
+- name: claude-opus-5.5
+  family: anthropic
+  id: anthropic/claude-opus-5.5
+  parameters:
+    reasoning:
+      effort: low
+      exclude: true
+- name: gemini-4-argon
+  family: google
+  id: google/gemini-4-argon
+  parameters:
+    reasoning:
+      effort: low
+      exclude: true
+- name: qwen3.8-2.4t-a95b
+  id: qwen/qwen3.8-2.4t-a95b
+  family: qwen
+  parameters:
+    temperature: 1.0
+    top_p: 0.95
+    top_k: 0
+    seed: 42
+    reasoning:
+      effort: low
+      exclude: true
+  metadata:
+    weights_access: open_weights
+    inference: hosted_api
+    reference_weights:
+      id: qwen/qwen3.8-2.4t-a95b
+      weights_repo: Qwen/Qwen3.8-2.4T-A95B
+      weights_revision: 207bd685a7e3696cfaff12ded7c6a7ea0f88c996
+      weights_license: other
+      total_parameters: 2446182725504
+      weight_files: 213
+      gated: false
+    provider_weight_revision_verified: false
+- name: deepseek-v4-pro-0813
+  id: deepseek/deepseek-v4-pro-0813
+  family: deepseek
+  parameters:
+    temperature: 1.0
+    top_p: 0.95
+    top_k: 0
+    seed: 42
+    reasoning:
+      effort: low
+      exclude: true
+  metadata:
+    weights_access: open_weights
+    inference: hosted_api
+    reference_weights:
+      id: deepseek/deepseek-v4-pro-0813
+      weights_repo: deepseek-ai/DeepSeek-V4-Pro-0813
+      weights_revision: 72e1d3230f6c080a530b0a1d46f8eb4602340597
+      weights_license: mit
+      total_parameters: 1650497936906
+      weight_files: 66
+      gated: false
+    provider_weight_revision_verified: false
+- name: deepseek-v4.1-flash-1017
+  id: deepseek/deepseek-v4.1-flash-1017
+  family: deepseek
+  parameters:
+    temperature: 1.0
+    top_p: 0.95
+    top_k: 0
+    seed: 42
+    reasoning:
+      effort: low
+      exclude: true
+  metadata:
+    weights_access: open_weights
+    inference: hosted_api
+    reference_weights:
+      id: deepseek/deepseek-v4.1-flash-1017
+      weights_repo: deepseek-ai/DeepSeek-V4.1-Flash-1017
+      weights_revision: 1bae0e1088993b9b82de08f59de5be5a34e42170
+      weights_license: mit
+      total_parameters: 763205315794
+      weight_files: 48
+      gated: false
+    provider_weight_revision_verified: false
+- name: glm-5.3
+  id: z-ai/glm-5.3
+  family: glm
+  parameters:
+    temperature: 1.0
+    top_p: 0.95
+    top_k: 0
+    seed: 42
+    reasoning:
+      effort: low
+      exclude: true
+  metadata:
+    weights_access: open_weights
+    inference: hosted_api
+    reference_weights:
+      id: z-ai/glm-5.3
+      weights_repo: zai-org/GLM-5.3
+      weights_revision: ba32f8c19c8738e2c57c71798c601d477a7bf844
+      weights_license: other
+      total_parameters: 753329940480
+      weight_files: 141
+      gated: false
+    provider_weight_revision_verified: false
+- name: kimi-k3
+  id: moonshotai/kimi-k3
+  family: moonshot
+  parameters:
+    temperature: 1.0
+    top_p: 0.95
+    top_k: 0
+    seed: 42
+    reasoning:
+      effort: low
+      exclude: true
+  metadata:
+    weights_access: open_weights
+    inference: hosted_api
+    reference_weights:
+      id: moonshotai/kimi-k3
+      weights_repo: moonshotai/Kimi-K3
+      weights_revision: f831ab66814297da540d832a5235f8e904f29d06
+      weights_license: other
+      total_parameters: 2779931837184
+      weight_files: 96
+      gated: false
+    provider_weight_revision_verified: false
+- name: minimax-m3
+  id: minimax/minimax-m3
+  family: minimax
+  parameters:
+    temperature: 1.0
+    top_p: 0.95
+    top_k: 0
+    seed: 42
+    reasoning:
+      enabled: true
+      exclude: true
+  metadata:
+    weights_access: open_weights
+    inference: hosted_api
+    reference_weights:
+      id: minimax/minimax-m3
+      weights_repo: MiniMaxAI/MiniMax-M3
+      weights_revision: d95e30cb912fe3021bb9c2ba66a8ce60b6c937a9
+      weights_license: other
+      total_parameters: 427040140160
+      weight_files: 59
+      gated: false
+    provider_weight_revision_verified: false
+- name: mimo-v2.6-pro
+  id: xiaomi/mimo-v2.6-pro
+  family: xiaomi
+  parameters:
+    temperature: 1.0
+    top_p: 0.95
+    top_k: 0
+    seed: 42
+    reasoning:
+      enabled: true
+      exclude: true
+  metadata:
+    weights_access: open_weights
+    inference: hosted_api
+    reference_weights:
+      id: xiaomi/mimo-v2.6-pro
+      weights_repo: XiaomiMiMo/MiMo-V2.6-Pro-RL
+      weights_revision: a066ba0057192126bd5d255f37138265fc1a435e
+      weights_license: mit
+      total_parameters: 1024216603392
+      weight_files: 132
+      gated: false
+    provider_weight_revision_verified: false
+frontier_max_tokens: 4096
+generation:
+  max_new_tokens: 1024
+  do_sample: false
+scoring:
+  top_k: 100
+  top_p:
+  - 0.9
+  - 0.95
+  - 0.99
+  modes:
+  - realistic
+  - strict
+  - strict_full
+  word_policy: whitespace
+  context_mode: chat
+  chunk_size: 128
+  max_sequence_tokens: 8192
+  temperature: 1.0
+hardware:
+  vram_limit_gib: 42
+  reserve_gib: 4
+  cpu_memory_gib: 64
+analysis:
+  seed: 42
+  bootstrap_replicates: 10000
+additional_texts:
+- data/texts/open-frontier-20261030.jsonl
+frontier_collection_enabled: false
+source_group_contrasts:
+- name: open_frontier_minus_closed_frontier
+  sources_a: &id001
+  - qwen3.8-2.4t-a95b
+  - deepseek-v4-pro-0813
+  - deepseek-v4.1-flash-1017
+  - glm-5.3
+  - kimi-k3
+  - minimax-m3
+  - mimo-v2.6-pro
+  sources_b:
+  - gpt-6-astra
+  - claude-opus-5.5
+  - gemini-4-argon
+- name: open_frontier_minus_greedy_local
+  sources_a: *id001
+  sources_b:
+  - qwen-2b
+  - qwen-4b
+  - qwen-9b
+  - qwen-27b-int8
+  - gemma-e2b
+  - gemma-e4b
+  - gemma-12b
