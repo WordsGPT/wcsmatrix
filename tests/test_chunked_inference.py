@@ -126,3 +126,61 @@ def test_real_transformers_architectures_match_unchunked(model_type):
     np.testing.assert_array_equal(chunked["top_ids"], full["top_ids"])
     np.testing.assert_array_equal(chunked["target_top_index"], full["target_top_index"])
     np.testing.assert_allclose(chunked["mass_before"], full["mass_before"], atol=2e-6, rtol=2e-5)
+
+
+def test_multi_device_sharded_audit_matches_single_device():
+    accelerate = pytest.importorskip("accelerate")
+    transformers = pytest.importorskip("transformers")
+    if "gemma4_text" not in transformers.CONFIG_MAPPING or not torch.cuda.is_available():
+        pytest.skip("Requires CUDA and locked Transformers version")
+    cfg = transformers.CONFIG_MAPPING["gemma4_text"](
+        vocab_size=32,
+        hidden_size=32,
+        intermediate_size=64,
+        num_hidden_layers=2,
+        num_attention_heads=4,
+        num_key_value_heads=2,
+        head_dim=8,
+        max_position_embeddings=128,
+        bos_token_id=1,
+        eos_token_id=2,
+        pad_token_id=0,
+        layer_types=["sliding_attention", "full_attention"],
+        sliding_window=16,
+        num_kv_shared_layers=0,
+        per_layer_config={},
+        vocab_size_per_layer_input=32,
+        hidden_size_per_layer_input=0,
+        rope_parameters={
+            "full_attention": {"rope_type": "default", "rope_theta": 10000.0, "partial_rotary_factor": 1.0},
+            "sliding_attention": {"rope_type": "default", "rope_theta": 10000.0},
+        },
+    )
+    torch.manual_seed(7)
+    single_gpu = transformers.AutoModelForCausalLM.from_config(cfg, attn_implementation="eager").eval().to("cuda:0")
+    torch.manual_seed(7)
+    sharded = transformers.AutoModelForCausalLM.from_config(cfg, attn_implementation="eager").eval()
+    sharded.tie_weights()
+    sharded = accelerate.dispatch_model(
+        sharded,
+        device_map={
+            "model.embed_tokens": 0,
+            "lm_head": 0,
+            "model.layers.0": 0,
+            "model.layers.1": "cpu",
+            "model.norm": "cpu",
+            "model.rotary_emb": "cpu",
+        },
+    )
+    scoring = {
+        "context_mode": "plain",
+        "max_sequence_tokens": 100,
+        "top_k": 10,
+        "temperature": 1.0,
+        "chunk_size": 3,
+    }
+    a1 = token_audit(single_gpu, Tokenizer(), "Question", "some more text here", {}, scoring)
+    a2 = token_audit(sharded, Tokenizer(), "Question", "some more text here", {}, scoring)
+    for k in ["top_probs", "top_ids", "target_top_index", "mass_before"]:
+        np.testing.assert_allclose(a1[k], a2[k], atol=1e-6)
+

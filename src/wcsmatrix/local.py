@@ -33,7 +33,9 @@ def load_model(spec, hardware):
 
     if not torch.cuda.is_available():
         raise RuntimeError("CUDA is required; install the gpu extra on the server")
-    free, total = torch.cuda.mem_get_info(0)
+    num_gpus = torch.cuda.device_count()
+    gpu_info = [torch.cuda.mem_get_info(i) for i in range(num_gpus)]
+    free = sum(f for f, _ in gpu_info)
     limit = min(float(hardware["vram_limit_gib"]), free / 2**30)
     estimate = spec["estimated_parameters_b"] * (1.02 if spec["precision"] == "int8" else 1.98) / 1.073741824
     reserve = min(float(hardware["reserve_gib"]), max(1.0, limit - estimate - 0.2))
@@ -42,7 +44,22 @@ def load_model(spec, hardware):
         raise RuntimeError(
             f"{spec['name']} estimated weights {estimate:.1f} GiB exceed {weight_budget:.1f} GiB budget"
         )
-    torch.cuda.set_per_process_memory_fraction(min(limit * 2**30 / total, 1.0), 0)
+    free0, total0 = gpu_info[0]
+    single_limit = min(float(hardware["vram_limit_gib"]), free0 / 2**30)
+    single_reserve = min(float(hardware["reserve_gib"]), max(1.0, single_limit - estimate - 0.2))
+    single_budget = single_limit - single_reserve
+    if num_gpus == 1 or single_budget >= estimate:
+        torch.cuda.set_per_process_memory_fraction(min(single_limit * 2**30 / total0, 1.0), 0)
+        gpu_max_memory = {0: f"{max(int(single_budget), int(np.ceil(estimate) + 1))}GiB"}
+    else:
+        per_gpu_reserve = max(2.0, reserve / num_gpus)
+        balanced_cap = int(np.ceil(estimate / num_gpus) + 5)
+        gpu_max_memory = {}
+        for i, (free_i, total_i) in enumerate(gpu_info):
+            limit_i = min(free_i / 2**30, float(hardware["vram_limit_gib"]) / num_gpus)
+            torch.cuda.set_per_process_memory_fraction(min(limit_i * 2**30 / total_i, 1.0), i)
+            budget_i = max(1, min(int(limit_i - per_gpu_reserve), balanced_cap))
+            gpu_max_memory[i] = f"{budget_i}GiB"
     try:
         tokenizer = AutoTokenizer.from_pretrained(spec["id"], revision=spec["revision"], use_fast=True)
     except Exception:
@@ -57,7 +74,7 @@ def load_model(spec, hardware):
         revision=spec["revision"],
         dtype=torch.bfloat16,
         device_map="auto",
-        max_memory={0: f"{max(int(weight_budget), int(np.ceil(estimate) + 1))}GiB", "cpu": f"{hardware['cpu_memory_gib']}GiB"},
+        max_memory={**gpu_max_memory, "cpu": f"{hardware['cpu_memory_gib']}GiB"},
         attn_implementation=attn,
         trust_remote_code=False,
     )
@@ -128,7 +145,8 @@ def generate(config, name=None, limit=None):
                 sample_seed = config["dataset"]["seed"] + int(digest(prompt["id"])[:8], 16)
                 torch.manual_seed(sample_seed)
                 prefix = prompt_prefix(tokenizer, prompt["prompt"], spec)
-                encoded = tokenizer(prefix, add_special_tokens=False, return_tensors="pt").to("cuda:0")
+                input_device = model.get_input_embeddings().weight.device
+                encoded = tokenizer(prefix, add_special_tokens=False, return_tensors="pt").to(input_device)
                 if (
                     encoded.input_ids.shape[1] + config["generation"]["max_new_tokens"]
                     > config["scoring"]["max_sequence_tokens"]
@@ -234,12 +252,13 @@ def token_audit(model, tokenizer, prompt, text, spec, scoring):
                 raise RuntimeError("Model did not return KV cache; chunked scoring would lose context")
             positions = [i for i in range(start + 1, end + 1) if i in selected_set]
             if positions:
-                local_positions = torch.tensor([i - start - 1 for i in positions], device=device)
+                out_device = output.logits.device
+                local_positions = torch.tensor([i - start - 1 for i in positions], device=out_device)
                 logits = output.logits[0, local_positions].float() / scoring.get("temperature", 1.0)
                 probs = torch.softmax(logits, dim=-1)
                 k = min(scoring["top_k"], probs.shape[-1])
                 values, indices = torch.topk(probs, k=k, dim=-1, sorted=True)
-                observed = torch.tensor([ids[i] for i in positions], device=device)
+                observed = torch.tensor([ids[i] for i in positions], device=out_device)
                 matches = indices == observed[:, None]
                 where = torch.where(matches.any(-1), matches.int().argmax(-1), -1)
                 actual = probs.gather(1, observed[:, None])
@@ -433,9 +452,13 @@ def preflight(config):
     }
     if not torch.cuda.is_available():
         raise RuntimeError("CUDA unavailable")
-    free, total = torch.cuda.mem_get_info(0)
+    num_gpus = torch.cuda.device_count()
+    gpu_info = [torch.cuda.mem_get_info(i) for i in range(num_gpus)]
+    free = sum(f for f, _ in gpu_info)
+    total = sum(t for _, t in gpu_info)
     report["gpu"] = {
-        "name": torch.cuda.get_device_name(0),
+        "name": " + ".join(torch.cuda.get_device_name(i) for i in range(num_gpus)),
+        "count": num_gpus,
         "total_gib": total / 2**30,
         "free_gib": free / 2**30,
         "configured_limit_gib": config["hardware"]["vram_limit_gib"],

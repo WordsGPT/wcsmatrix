@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# High-VRAM GPU Server Script (>= 64 GiB free VRAM, e.g. 80GB/94GB H100 or A100)
+# High-VRAM GPU Server Script (>= 64 GiB combined free VRAM, e.g. 2x 48GB A6000 or 80GB H100/A100)
 # ==============================================================================
 # Usage on the high-VRAM server:
 #   git pull
@@ -10,6 +10,8 @@
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
+export PYTORCH_CUDA_ALLOC_CONF="expandable_segments:True"
+export TOKENIZERS_PARALLELISM=false
 
 ENV_FILE=""
 if [[ "${1:-}" == "--env-file" && -n "${2:-}" ]]; then
@@ -21,16 +23,19 @@ uv sync --python 3.12 --extra gpu --extra dev
 uv run ruff check src tests
 uv run --extra gpu pytest -q
 
-# Verify free GPU memory >= 62 GiB before loading Gemma-4-31B-it in bf16
+# Verify combined free GPU memory >= 62 GiB before loading Gemma-4-31B-it in bf16
 uv run --extra gpu python -c '
 import torch
 assert torch.cuda.is_available(), "CUDA is required"
-free_gib, total_gib = [x / (2**30) for x in torch.cuda.mem_get_info(0)]
-print(f"GPU: {torch.cuda.get_device_name(0)} | Free: {free_gib:.1f} GiB / Total: {total_gib:.1f} GiB")
+num_gpus = torch.cuda.device_count()
+infos = [torch.cuda.mem_get_info(i) for i in range(num_gpus)]
+free_gib = sum(f for f, _ in infos) / (2**30)
+total_gib = sum(t for _, t in infos) / (2**30)
+names = " + ".join(f"GPU {i}: {torch.cuda.get_device_name(i)} ({infos[i][0]/(2**30):.1f}/{infos[i][1]/(2**30):.1f} GiB)" for i in range(num_gpus))
+print(f"Detected {num_gpus} GPU(s): {names} | Combined Free: {free_gib:.1f} GiB / Total: {total_gib:.1f} GiB")
 if free_gib < 62.0:
     raise SystemExit(
-        f"ERROR: Gemma-4-31B-it in bf16 requires >= 62 GiB free VRAM (found {free_gib:.1f} GiB). "
-        "Please run this script on an 80GB/94GB H100 or A100 node."
+        f"ERROR: Gemma-4-31B-it in bf16 requires >= 62 GiB combined free VRAM (found {free_gib:.1f} GiB across {num_gpus} GPU(s))."
     )
 '
 
