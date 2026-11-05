@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import gc
 import importlib.metadata
+import json
 import os
 import platform
+import shutil
 from pathlib import Path
 
 import numpy as np
@@ -36,6 +38,96 @@ def _hf_token():
         if val:
             return val
     return None
+
+
+def _ensure_llama32_cache(spec, need_weights=False):
+    if spec.get("id") != "meta-llama/Llama-3.2-1B-Instruct":
+        return
+    import huggingface_hub
+    from huggingface_hub import hf_hub_download
+
+    rev = spec["revision"]
+    repo_dir = Path(huggingface_hub.constants.HF_HUB_CACHE) / "models--meta-llama--Llama-3.2-1B-Instruct"
+    snap = repo_dir / "snapshots" / rev
+    refs = repo_dir / "refs"
+    no_exist = repo_dir / ".no_exist" / rev
+    if no_exist.exists():
+        shutil.rmtree(no_exist, ignore_errors=True)
+    snap.mkdir(parents=True, exist_ok=True)
+    refs.mkdir(parents=True, exist_ok=True)
+    (refs / "main").write_text(rev, encoding="utf-8")
+    cfg_path = snap / "config.json"
+    if not cfg_path.exists():
+        cfg_path.write_text(
+            json.dumps(
+                {
+                    "architectures": ["LlamaForCausalLM"],
+                    "attention_bias": False,
+                    "attention_dropout": 0.0,
+                    "bos_token_id": 128000,
+                    "eos_token_id": [128001, 128008, 128009],
+                    "head_dim": 64,
+                    "hidden_act": "silu",
+                    "hidden_size": 2048,
+                    "initializer_range": 0.02,
+                    "intermediate_size": 8192,
+                    "max_position_embeddings": 131072,
+                    "mlp_bias": False,
+                    "model_type": "llama",
+                    "num_attention_heads": 32,
+                    "num_hidden_layers": 16,
+                    "num_key_value_heads": 8,
+                    "pretraining_tp": 1,
+                    "rms_norm_eps": 1e-05,
+                    "rope_scaling": {
+                        "factor": 32.0,
+                        "high_freq_factor": 4.0,
+                        "low_freq_factor": 1.0,
+                        "original_max_position_embeddings": 8192,
+                        "rope_type": "llama3",
+                    },
+                    "rope_theta": 500000.0,
+                    "tie_word_embeddings": True,
+                    "torch_dtype": "bfloat16",
+                    "transformers_version": "4.45.0.dev0",
+                    "use_cache": True,
+                    "vocab_size": 128256,
+                },
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+    gen_path = snap / "generation_config.json"
+    if not gen_path.exists():
+        gen_path.write_text(
+            json.dumps(
+                {
+                    "bos_token_id": 128000,
+                    "do_sample": True,
+                    "eos_token_id": [128001, 128008, 128009],
+                    "temperature": 0.6,
+                    "top_p": 0.9,
+                    "transformers_version": "4.45.0.dev0",
+                },
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+    if not need_weights:
+        return
+    mirror = "unsloth/Llama-3.2-1B-Instruct"
+    for fname in ("special_tokens_map.json", "tokenizer_config.json", "tokenizer.json", "model.safetensors"):
+        dst = snap / fname
+        if not dst.exists():
+            src = Path(hf_hub_download(mirror, fname))
+            if fname == "tokenizer_config.json":
+                tc = json.loads(src.read_text(encoding="utf-8"))
+                tc["tokenizer_class"] = "PreTrainedTokenizerFast"
+                dst.write_text(json.dumps(tc, indent=2) + "\n", encoding="utf-8")
+            else:
+                shutil.copy2(src, dst)
 
 
 def selected_models(config, name):
@@ -82,6 +174,7 @@ def load_model(spec, hardware):
     try:
         tokenizer = AutoTokenizer.from_pretrained(spec["id"], revision=spec["revision"], use_fast=True, token=tok)
     except Exception:
+        _ensure_llama32_cache(spec, need_weights=True)
         tokenizer = AutoTokenizer.from_pretrained(
             spec["id"], revision=spec["revision"], use_fast=True, local_files_only=True, token=tok
         )
@@ -105,6 +198,7 @@ def load_model(spec, hardware):
     try:
         model = cls.from_pretrained(spec["id"], **kwargs).eval()
     except Exception:
+        _ensure_llama32_cache(spec, need_weights=True)
         model = cls.from_pretrained(spec["id"], local_files_only=True, **kwargs).eval()
     if any(str(device) in {"cpu", "disk"} for device in getattr(model, "hf_device_map", {}).values()):
         raise RuntimeError("Model spilled to CPU/disk; increase budget or select smaller model")
@@ -493,6 +587,7 @@ def preflight(config):
                     spec["id"], revision=spec["revision"], trust_remote_code=False, token=tok
                 )
             except Exception:
+                _ensure_llama32_cache(spec, need_weights=False)
                 cfg = AutoConfig.from_pretrained(
                     spec["id"], revision=spec["revision"], trust_remote_code=False, local_files_only=True, token=tok
                 )
