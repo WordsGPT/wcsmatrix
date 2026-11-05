@@ -41,13 +41,100 @@ def _hf_token():
 
 
 def _ensure_llama32_cache(spec, need_weights=False):
-    if spec.get("id") != "meta-llama/Llama-3.2-1B-Instruct":
+    mirrors = {
+        "meta-llama/Llama-3.2-1B-Instruct": (
+            "models--meta-llama--Llama-3.2-1B-Instruct",
+            "unsloth/Llama-3.2-1B-Instruct",
+            ("special_tokens_map.json", "tokenizer_config.json", "tokenizer.json", "model.safetensors"),
+            {
+                "architectures": ["LlamaForCausalLM"],
+                "attention_bias": False,
+                "attention_dropout": 0.0,
+                "bos_token_id": 128000,
+                "eos_token_id": [128001, 128008, 128009],
+                "head_dim": 64,
+                "hidden_act": "silu",
+                "hidden_size": 2048,
+                "initializer_range": 0.02,
+                "intermediate_size": 8192,
+                "max_position_embeddings": 131072,
+                "mlp_bias": False,
+                "model_type": "llama",
+                "num_attention_heads": 32,
+                "num_hidden_layers": 16,
+                "num_key_value_heads": 8,
+                "pretraining_tp": 1,
+                "rms_norm_eps": 1e-05,
+                "rope_scaling": {
+                    "factor": 32.0,
+                    "high_freq_factor": 4.0,
+                    "low_freq_factor": 1.0,
+                    "original_max_position_embeddings": 8192,
+                    "rope_type": "llama3",
+                },
+                "rope_theta": 500000.0,
+                "tie_word_embeddings": True,
+                "torch_dtype": "bfloat16",
+                "transformers_version": "4.45.0.dev0",
+                "use_cache": True,
+                "vocab_size": 128256,
+            },
+        ),
+        "meta-llama/Llama-3.1-8B-Instruct": (
+            "models--meta-llama--Llama-3.1-8B-Instruct",
+            "unsloth/Meta-Llama-3.1-8B-Instruct",
+            (
+                "special_tokens_map.json",
+                "tokenizer_config.json",
+                "tokenizer.json",
+                "model.safetensors.index.json",
+                "model-00001-of-00004.safetensors",
+                "model-00002-of-00004.safetensors",
+                "model-00003-of-00004.safetensors",
+                "model-00004-of-00004.safetensors",
+            ),
+            {
+                "architectures": ["LlamaForCausalLM"],
+                "attention_bias": False,
+                "attention_dropout": 0.0,
+                "bos_token_id": 128000,
+                "eos_token_id": [128001, 128008, 128009],
+                "hidden_act": "silu",
+                "hidden_size": 4096,
+                "initializer_range": 0.02,
+                "intermediate_size": 14336,
+                "max_position_embeddings": 131072,
+                "mlp_bias": False,
+                "model_type": "llama",
+                "num_attention_heads": 32,
+                "num_hidden_layers": 32,
+                "num_key_value_heads": 8,
+                "pretraining_tp": 1,
+                "rms_norm_eps": 1e-05,
+                "rope_scaling": {
+                    "factor": 8.0,
+                    "low_freq_factor": 1.0,
+                    "high_freq_factor": 4.0,
+                    "original_max_position_embeddings": 8192,
+                    "rope_type": "llama3",
+                },
+                "rope_theta": 500000.0,
+                "tie_word_embeddings": False,
+                "torch_dtype": "bfloat16",
+                "transformers_version": "4.42.3",
+                "use_cache": True,
+                "vocab_size": 128256,
+            },
+        ),
+    }
+    if spec.get("id") not in mirrors:
         return
     import huggingface_hub
     from huggingface_hub import hf_hub_download
 
+    folder, mirror, weight_files, cfg_dict = mirrors[spec["id"]]
     rev = spec["revision"]
-    repo_dir = Path(huggingface_hub.constants.HF_HUB_CACHE) / "models--meta-llama--Llama-3.2-1B-Instruct"
+    repo_dir = Path(huggingface_hub.constants.HF_HUB_CACHE) / folder
     snap = repo_dir / "snapshots" / rev
     refs = repo_dir / "refs"
     no_exist = repo_dir / ".no_exist" / rev
@@ -58,46 +145,7 @@ def _ensure_llama32_cache(spec, need_weights=False):
     (refs / "main").write_text(rev, encoding="utf-8")
     cfg_path = snap / "config.json"
     if not cfg_path.exists():
-        cfg_path.write_text(
-            json.dumps(
-                {
-                    "architectures": ["LlamaForCausalLM"],
-                    "attention_bias": False,
-                    "attention_dropout": 0.0,
-                    "bos_token_id": 128000,
-                    "eos_token_id": [128001, 128008, 128009],
-                    "head_dim": 64,
-                    "hidden_act": "silu",
-                    "hidden_size": 2048,
-                    "initializer_range": 0.02,
-                    "intermediate_size": 8192,
-                    "max_position_embeddings": 131072,
-                    "mlp_bias": False,
-                    "model_type": "llama",
-                    "num_attention_heads": 32,
-                    "num_hidden_layers": 16,
-                    "num_key_value_heads": 8,
-                    "pretraining_tp": 1,
-                    "rms_norm_eps": 1e-05,
-                    "rope_scaling": {
-                        "factor": 32.0,
-                        "high_freq_factor": 4.0,
-                        "low_freq_factor": 1.0,
-                        "original_max_position_embeddings": 8192,
-                        "rope_type": "llama3",
-                    },
-                    "rope_theta": 500000.0,
-                    "tie_word_embeddings": True,
-                    "torch_dtype": "bfloat16",
-                    "transformers_version": "4.45.0.dev0",
-                    "use_cache": True,
-                    "vocab_size": 128256,
-                },
-                indent=2,
-            )
-            + "\n",
-            encoding="utf-8",
-        )
+        cfg_path.write_text(json.dumps(cfg_dict, indent=2) + "\n", encoding="utf-8")
     gen_path = snap / "generation_config.json"
     if not gen_path.exists():
         gen_path.write_text(
@@ -108,7 +156,7 @@ def _ensure_llama32_cache(spec, need_weights=False):
                     "eos_token_id": [128001, 128008, 128009],
                     "temperature": 0.6,
                     "top_p": 0.9,
-                    "transformers_version": "4.45.0.dev0",
+                    "transformers_version": cfg_dict["transformers_version"],
                 },
                 indent=2,
             )
@@ -117,8 +165,7 @@ def _ensure_llama32_cache(spec, need_weights=False):
         )
     if not need_weights:
         return
-    mirror = "unsloth/Llama-3.2-1B-Instruct"
-    for fname in ("special_tokens_map.json", "tokenizer_config.json", "tokenizer.json", "model.safetensors"):
+    for fname in weight_files:
         dst = snap / fname
         if not dst.exists():
             src = Path(hf_hub_download(mirror, fname))
