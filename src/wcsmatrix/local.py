@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import gc
 import importlib.metadata
+import os
 import platform
 from pathlib import Path
 
@@ -18,6 +19,19 @@ from .io import (
     write_jsonl,
 )
 from .metrics import coverage, word_groups
+
+
+def _hf_token():
+    for var in ("HF_TOKEN", "HUGGING_FACE_HUB_TOKEN"):
+        val = os.environ.get(var, "").strip()
+        if val:
+            return val
+    for path in (Path(".hf_token"), Path.home() / ".cache" / "huggingface" / "token"):
+        if path.exists():
+            val = path.read_text(encoding="utf-8", errors="ignore").strip()
+            if val:
+                return val
+    return None
 
 
 def selected_models(config, name):
@@ -60,11 +74,12 @@ def load_model(spec, hardware):
             torch.cuda.set_per_process_memory_fraction(min(limit_i * 2**30 / total_i, 1.0), i)
             budget_i = max(1, min(int(limit_i - per_gpu_reserve), balanced_cap))
             gpu_max_memory[i] = f"{budget_i}GiB"
+    tok = _hf_token()
     try:
-        tokenizer = AutoTokenizer.from_pretrained(spec["id"], revision=spec["revision"], use_fast=True)
+        tokenizer = AutoTokenizer.from_pretrained(spec["id"], revision=spec["revision"], use_fast=True, token=tok)
     except Exception:
         tokenizer = AutoTokenizer.from_pretrained(
-            spec["id"], revision=spec["revision"], use_fast=True, local_files_only=True
+            spec["id"], revision=spec["revision"], use_fast=True, local_files_only=True, token=tok
         )
     if not tokenizer.is_fast:
         raise ValueError("Fast tokenizer with offsets is required")
@@ -77,6 +92,7 @@ def load_model(spec, hardware):
         max_memory={**gpu_max_memory, "cpu": f"{hardware['cpu_memory_gib']}GiB"},
         attn_implementation=attn,
         trust_remote_code=False,
+        token=tok,
     )
     if spec["precision"] == "int8":
         kwargs["quantization_config"] = BitsAndBytesConfig(load_in_8bit=True)
@@ -463,19 +479,25 @@ def preflight(config):
         "free_gib": free / 2**30,
         "configured_limit_gib": config["hardware"]["vram_limit_gib"],
     }
+    tok = _hf_token()
+    headers = {"Authorization": f"Bearer {tok}"} if tok else None
     errors = []
     for spec in config["models"]:
         try:
             try:
-                cfg = AutoConfig.from_pretrained(spec["id"], revision=spec["revision"], trust_remote_code=False)
+                cfg = AutoConfig.from_pretrained(
+                    spec["id"], revision=spec["revision"], trust_remote_code=False, token=tok
+                )
             except Exception:
                 cfg = AutoConfig.from_pretrained(
-                    spec["id"], revision=spec["revision"], trust_remote_code=False, local_files_only=True
+                    spec["id"], revision=spec["revision"], trust_remote_code=False, local_files_only=True, token=tok
                 )
             info = {"name": spec["name"], "architecture": cfg.architectures, "model_type": cfg.model_type}
             # Config access verifies pinned revision and gated-repository authorization.
             response = httpx.get(
-                f"https://huggingface.co/api/models/{spec['id']}/revision/{spec['revision']}", timeout=30
+                f"https://huggingface.co/api/models/{spec['id']}/revision/{spec['revision']}",
+                headers=headers,
+                timeout=30,
             )
             info["metadata_http_status"] = response.status_code
             budget = (

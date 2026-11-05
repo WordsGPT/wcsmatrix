@@ -6,6 +6,7 @@ __pycache__/
 .env
 .env.*
 !.env.example
+.hf_token
 untitled.txt
 credentials*
 secrets*

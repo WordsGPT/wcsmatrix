@@ -12,6 +12,14 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 export PYTORCH_CUDA_ALLOC_CONF="expandable_segments:True"
 export TOKENIZERS_PARALLELISM=false
+unset HF_HUB_DISABLE_IMPLICIT_TOKEN || true
+if [[ -z "${HF_TOKEN:-}" ]]; then
+    if [[ -f ".hf_token" ]]; then
+        export HF_TOKEN="$(tr -d '[:space:]' < .hf_token)"
+    elif [[ -f "$HOME/.cache/huggingface/token" ]]; then
+        export HF_TOKEN="$(tr -d '[:space:]' < "$HOME/.cache/huggingface/token")"
+    fi
+fi
 
 ENV_FILE=""
 if [[ "${1:-}" == "--env-file" && -n "${2:-}" ]]; then
@@ -70,14 +78,15 @@ if [[ -n "$ENV_FILE" ]]; then
 fi
 
 echo "=== [1/6] Running 2-Prompt GPU Smoke Test for Gemma-4-31B-it (bf16) ==="
-cp -n data/texts/smoke-local.jsonl data/texts/smoke-local-gemma31b.jsonl || true
+[[ -f data/texts/smoke-local-gemma31b.jsonl ]] || cp data/texts/smoke-local.jsonl data/texts/smoke-local-gemma31b.jsonl
+uv run --extra gpu wcsmatrix --config configs/high-vram-eli5-gemma31b.yaml preflight
 uv run --extra gpu wcsmatrix --config configs/high-vram-smoke-gemma31b.yaml preflight
 uv run --extra gpu wcsmatrix --config configs/high-vram-smoke-gemma31b.yaml generate --model gemma-31b --limit 2
 uv run --extra gpu wcsmatrix --config configs/high-vram-smoke-gemma31b.yaml audit --model gemma-31b --limit 2
 echo "Smoke test passed!"
 
 echo "=== [2/6] HC3 ELI5: Generating & Auditing Gemma-4-31B-it (bf16) ==="
-cp -n data/texts/local-expanded.jsonl data/texts/local-expanded-gemma31b.jsonl
+[[ -f data/texts/local-expanded-gemma31b.jsonl ]] || cp data/texts/local-expanded.jsonl data/texts/local-expanded-gemma31b.jsonl
 
 # Generate 50 ELI5 answers from gemma-31b (greedy, T=0)
 uv run --extra gpu wcsmatrix --config configs/high-vram-eli5-gemma31b.yaml generate --model gemma-31b
@@ -94,7 +103,7 @@ done
 uv run wcsmatrix --config configs/high-vram-eli5-gemma31b.yaml analyze --allow-partial
 
 echo "=== [3/6] HC3 Wikipedia CS/AI: Generating & Auditing Gemma-4-31B-it & Qwen-27B-int8 ==="
-cp -n data/texts/wiki-local-expanded.jsonl data/texts/wiki-local-expanded-gemma31b.jsonl
+[[ -f data/texts/wiki-local-expanded-gemma31b.jsonl ]] || cp data/texts/wiki-local-expanded.jsonl data/texts/wiki-local-expanded-gemma31b.jsonl
 
 # Generate 50 Wikipedia CS/AI answers from gemma-31b and qwen-27b-int8
 for model in gemma-31b qwen-27b-int8; do
