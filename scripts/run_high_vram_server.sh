@@ -13,12 +13,10 @@ cd "$(dirname "$0")/.."
 export PYTORCH_CUDA_ALLOC_CONF="expandable_segments:True"
 export TOKENIZERS_PARALLELISM=false
 unset HF_HUB_DISABLE_IMPLICIT_TOKEN || true
-if [[ -z "${HF_TOKEN:-}" ]]; then
-    if [[ -f ".hf_token" ]]; then
-        export HF_TOKEN="$(tr -d '[:space:]' < .hf_token)"
-    elif [[ -f "$HOME/.cache/huggingface/token" ]]; then
-        export HF_TOKEN="$(tr -d '[:space:]' < "$HOME/.cache/huggingface/token")"
-    fi
+if [[ -f ".hf_token" ]]; then
+    export HF_TOKEN="$(tr -d '[:space:]' < .hf_token)"
+elif [[ -z "${HF_TOKEN:-}" && -f "$HOME/.cache/huggingface/token" ]]; then
+    export HF_TOKEN="$(tr -d '[:space:]' < "$HOME/.cache/huggingface/token")"
 fi
 
 ENV_FILE=""

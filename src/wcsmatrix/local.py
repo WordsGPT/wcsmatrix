@@ -22,15 +22,19 @@ from .metrics import coverage, word_groups
 
 
 def _hf_token():
+    if Path(".hf_token").exists():
+        val = Path(".hf_token").read_text(encoding="utf-8", errors="ignore").strip()
+        if val:
+            return val
     for var in ("HF_TOKEN", "HUGGING_FACE_HUB_TOKEN"):
         val = os.environ.get(var, "").strip()
         if val:
             return val
-    for path in (Path(".hf_token"), Path.home() / ".cache" / "huggingface" / "token"):
-        if path.exists():
-            val = path.read_text(encoding="utf-8", errors="ignore").strip()
-            if val:
-                return val
+    cache_tok = Path.home() / ".cache" / "huggingface" / "token"
+    if cache_tok.exists():
+        val = cache_tok.read_text(encoding="utf-8", errors="ignore").strip()
+        if val:
+            return val
     return None
 
 
@@ -511,7 +515,14 @@ def preflight(config):
                 raise ValueError(f"Estimated weights {estimate:.1f} GiB exceed {budget:.1f} GiB available")
             report["models"].append(info)
         except Exception as exc:
-            errors.append({"name": spec["name"], "type": type(exc).__name__})
+            errors.append(
+                {
+                    "name": spec["name"],
+                    "type": type(exc).__name__,
+                    "detail": str(exc).splitlines()[0][:200],
+                    "has_token": bool(tok),
+                }
+            )
     report["errors"] = errors
     write_json("results/manifests/preflight.json", report)
     print(report["gpu"])
