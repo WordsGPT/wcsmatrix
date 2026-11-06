@@ -25,6 +25,13 @@ def csv_file(path, rows):
 def collection_report(config, directory):
     prompts = read_jsonl(config["prompts"])
     texts = source_texts(config)
+    configured_sources = (
+        {"human"}
+        | {m["name"] for m in config.get("models", [])}
+        | {m["name"] for m in config.get("frontier_models", [])}
+    )
+    if configured_sources - {"human"}:
+        texts = [r for r in texts if r["source"] in configured_sources]
     expected = {p["id"] for p in prompts}
     grouped = defaultdict(list)
     for row in texts:
@@ -86,6 +93,8 @@ def analyze(config, allow_partial=False):
     for row in scores:
         if row["prompt_id"] not in prompts:
             raise ValueError("Score contains prompt outside manifest")
+        if row["source"] not in sources or row["scorer"] not in scorers:
+            continue
         key = (row["scorer"], row["source"], row["mode"], row["p"])
         if key not in expected:
             raise ValueError(f"Unexpected score cell {key}")

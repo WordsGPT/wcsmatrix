@@ -455,6 +455,14 @@ def audit(config, name=None, limit=None, sources=None):
     if sources:
         allowed_sources = {sources} if isinstance(sources, str) else set(sources)
         texts = [r for r in texts if r["source"] in allowed_sources]
+    else:
+        configured_sources = (
+            {"human"}
+            | {m["name"] for m in config.get("models", [])}
+            | {m["name"] for m in config.get("frontier_models", [])}
+        )
+        if configured_sources - {"human"}:
+            texts = [r for r in texts if r["source"] in configured_sources]
     if not texts:
         raise ValueError("No source texts; run prepare/generate/frontier first")
     if limit is not None:
@@ -523,6 +531,11 @@ def rescore(config):
 
     rows = []
     specs = {m["name"]: m for m in config["models"]}
+    configured_sources = (
+        {"human"}
+        | set(specs)
+        | {m["name"] for m in config.get("frontier_models", [])}
+    )
     prompts = {p["id"]: p for p in evaluation_prompts(config)}
     texts = {(r["prompt_id"], r["source"]): r for r in source_texts(config)}
     scoring_settings = {
@@ -530,6 +543,8 @@ def rescore(config):
     }
     for path in sorted((Path("results/audits") / config["name"]).glob("*/*/*.npz")):
         meta = json.loads(path.with_suffix(".json").read_text())
+        if meta["source"] not in configured_sources:
+            continue
         source = texts.get((meta["prompt_id"], meta["source"]))
         if source is None or meta["scorer"] not in specs or meta["prompt_id"] not in prompts:
             raise ValueError("Audit no longer belongs to configured sources/scorers/prompts")
@@ -580,6 +595,7 @@ def rescore(config):
         (r["prompt_id"], r["source"], r["scorer"], r["mode"], float(r["p"])): r
         for r in read_jsonl(score_path)
         if (r["prompt_id"], r["source"]) in texts
+        and r["source"] in configured_sources
         and r["scorer"] in specs
         and r["prompt_id"] in prompts
         and r.get("mode") in allowed_modes

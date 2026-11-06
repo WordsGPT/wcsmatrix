@@ -62,3 +62,11 @@ def test_complete_matrix_prompt_pairing_and_paper_comparison(tmp_path, monkeypat
         analyze(cfg)
     analyze(cfg, allow_partial=True)
     assert json.loads((output / "analysis-manifest.json").read_text())["partial"] is True
+    extra_source_row = {
+        **scores[0],
+        "source": "unconfigured-source",
+        "scorer": "a",
+    }
+    write_jsonl("results/scores/test.jsonl", scores + [extra_source_row])
+    analyze(cfg)
+    assert json.loads((output / "analysis-manifest.json").read_text())["partial"] is False
