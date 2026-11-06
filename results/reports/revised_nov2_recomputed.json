@@ -5277,56 +5277,92 @@
   "wiki_4sc_tiers": {
     "realistic_0.99": {
       "tier_means": {
-        "human": 0.8571,
-        "frontier_prop": 0.8833,
-        "large_ow": 0.9042,
-        "small_ow": 0.9626
+        "human": 0.8569230834080033,
+        "frontier_prop": 0.8834943853006929,
+        "large_ow": 0.9042310226904738,
+        "small_ow": 0.9625941012030392
       },
       "contrasts": {
         "large_ow_minus_small_ow": {
-          "delta": -0.0584,
-          "ci_low": -0.0616,
-          "ci_high": -0.0553,
+          "delta": -0.0583630785125654,
+          "ci_low": -0.061578075181294725,
+          "ci_high": -0.05524308095936767,
           "n": 50
         },
         "large_ow_minus_frontier_prop": {
-          "delta": 0.0209,
-          "ci_low": 0.0184,
-          "ci_high": 0.0235,
+          "delta": 0.02073663738978107,
+          "ci_low": 0.018230596549972423,
+          "ci_high": 0.023255039443642486,
           "n": 50
         },
         "human_minus_frontier_prop": {
-          "delta": -0.0262,
-          "ci_low": -0.0321,
-          "ci_high": -0.0202,
+          "delta": -0.026571301892689546,
+          "ci_low": -0.03251616417346213,
+          "ci_high": -0.020496228094201832,
+          "n": 50
+        },
+        "human_minus_large_ow": {
+          "delta": -0.04730793928247062,
+          "ci_low": -0.05340327698761463,
+          "ci_high": -0.04097807024809568,
+          "n": 50
+        },
+        "human_minus_small_ow": {
+          "delta": -0.105671017795036,
+          "ci_low": -0.11160223762611593,
+          "ci_high": -0.09971009438019302,
+          "n": 50
+        },
+        "frontier_prop_minus_human": {
+          "delta": 0.026571301892689546,
+          "ci_low": 0.02049622809420183,
+          "ci_high": 0.03251616417346212,
           "n": 50
         }
       }
     },
     "realistic_0.95": {
       "tier_means": {
-        "human": 0.777,
-        "frontier_prop": 0.8116,
-        "large_ow": 0.8355,
-        "small_ow": 0.9245
+        "human": 0.776807236148881,
+        "frontier_prop": 0.8115319416825023,
+        "large_ow": 0.8354415020444239,
+        "small_ow": 0.9244206471867464
       },
       "contrasts": {
         "large_ow_minus_small_ow": {
-          "delta": -0.089,
-          "ci_low": -0.0937,
-          "ci_high": -0.0842,
+          "delta": -0.0889791451423225,
+          "ci_low": -0.09375886397845844,
+          "ci_high": -0.08415658223105414,
           "n": 50
         },
         "large_ow_minus_frontier_prop": {
-          "delta": 0.0238,
-          "ci_low": 0.0206,
-          "ci_high": 0.0271,
+          "delta": 0.02390956036192162,
+          "ci_low": 0.020594153889541267,
+          "ci_high": 0.02725016763465309,
           "n": 50
         },
         "human_minus_frontier_prop": {
-          "delta": -0.0346,
-          "ci_low": -0.042,
-          "ci_high": -0.0271,
+          "delta": -0.03472470553362125,
+          "ci_low": -0.04200971981213462,
+          "ci_high": -0.027247523817578105,
+          "n": 50
+        },
+        "human_minus_large_ow": {
+          "delta": -0.05863426589554289,
+          "ci_low": -0.06632499565741092,
+          "ci_high": -0.05087813748280617,
+          "n": 50
+        },
+        "human_minus_small_ow": {
+          "delta": -0.14761341103786538,
+          "ci_low": -0.1549701784568674,
+          "ci_high": -0.14020046090246124,
+          "n": 50
+        },
+        "frontier_prop_minus_human": {
+          "delta": 0.03472470553362125,
+          "ci_low": 0.027247523817578105,
+          "ci_high": 0.04200971981213462,
           "n": 50
         }
       }
@@ -5379,28 +5415,46 @@
     },
     "strict_full_0.99": {
       "tier_means": {
-        "human": 0.8872,
-        "frontier_prop": 0.8897,
-        "large_ow": 0.9088,
-        "small_ow": 0.9639
+        "human": 0.8867921839728903,
+        "frontier_prop": 0.8896565034023788,
+        "large_ow": 0.9089922103528407,
+        "small_ow": 0.9638717578687073
       },
       "contrasts": {
         "large_ow_minus_small_ow": {
-          "delta": -0.0551,
-          "ci_low": -0.0578,
-          "ci_high": -0.0524,
+          "delta": -0.054879547515866614,
+          "ci_low": -0.05761024815512099,
+          "ci_high": -0.05220003982579652,
           "n": 50
         },
         "large_ow_minus_frontier_prop": {
-          "delta": 0.0191,
-          "ci_low": 0.0169,
-          "ci_high": 0.0214,
+          "delta": 0.019335706950461898,
+          "ci_low": 0.01708405650585616,
+          "ci_high": 0.02157130973655827,
           "n": 50
         },
         "human_minus_frontier_prop": {
-          "delta": -0.0025,
-          "ci_low": -0.008,
-          "ci_high": 0.0028,
+          "delta": -0.0028643194294885356,
+          "ci_low": -0.008386967591914771,
+          "ci_high": 0.002433209900794068,
+          "n": 50
+        },
+        "human_minus_large_ow": {
+          "delta": -0.022200026379950433,
+          "ci_low": -0.027608564960831892,
+          "ci_high": -0.016754854368940003,
+          "n": 50
+        },
+        "human_minus_small_ow": {
+          "delta": -0.07707957389581704,
+          "ci_low": -0.08167023989823466,
+          "ci_high": -0.0724796231041554,
+          "n": 50
+        },
+        "frontier_prop_minus_human": {
+          "delta": 0.0028643194294885356,
+          "ci_low": -0.0024332099007940682,
+          "ci_high": 0.00838696759191477,
           "n": 50
         }
       }
