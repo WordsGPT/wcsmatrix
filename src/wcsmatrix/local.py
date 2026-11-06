@@ -3,9 +3,11 @@ from __future__ import annotations
 import gc
 import importlib.metadata
 import json
+import logging
 import os
 import platform
 import shutil
+import warnings
 from pathlib import Path
 
 import numpy as np
@@ -21,6 +23,9 @@ from .io import (
     write_jsonl,
 )
 from .metrics import coverage, word_groups
+
+warnings.filterwarnings("ignore", message=".*MatMul8bitLt.*")
+logging.getLogger("bitsandbytes").setLevel(logging.ERROR)
 
 
 def _hf_token():
